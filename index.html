@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Tube Pro · YouTube replica</title>
+
+<!-- Load Google API client library -->
+<script src="https://apis.google.com/js/api.js"></script>
+
+<style>
+/* --- reset / base --- */
+* {
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+}
+body {
+  margin: 0;
+  background: #0f0f0f;
+  color: #fff;
+}
+/* --- fixed navbar --- */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: #181818;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 100;
+  border-bottom: 1px solid #333;
+}
+.logo {
+  color: #ff0000;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.5px;
+  cursor: pointer;
+}
+.search-box {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 20px;
+}
+.search-box input {
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 40px 0 0 40px;
+  background: #121212;
+  color: white;
+  border: 1px solid #333;
+  border-right: none;
+  outline: none;
+  font-size: 0.95rem;
+}
+.search-box input:focus {
+  border-color: #1c62b9;
+}
+.search-box button {
+  padding: 8px 22px;
+  border: none;
+  background: #ff0000;
+  color: white;
+  border-radius: 0 40px 40px 0;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #ff0000;
+  transition: background 0.2s;
+}
+.search-box button:hover {
+  background: #cc0000;
+}
+#loginBtn {
+  background: transparent;
+  color: #3ea6ff;
+  border: 1px solid #3ea6ff;
+  border-radius: 40px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+#loginBtn:hover {
+  background: #263850;
+}
+/* --- main content --- */
+.main {
+  padding: 80px 20px 30px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+/* --- video grid --- */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+.video-card {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.video-card:hover {
+  transform: scale(1.02);
+}
+.video-card img {
+  width: 100%;
+  border-radius: 12px;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+.video-card p {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* --- player section --- */
+#playerSection {
+  margin-bottom: 30px;
+}
+#player iframe {
+  width: 100%;
+  height: 450px;
+  border-radius: 16px;
+  border: none;
+  background: #000;
+}
+#details h2 {
+  margin: 15px 0 5px;
+  font-size: 1.5rem;
+}
+#details p {
+  color: #aaa;
+  margin: 4px 0;
+}
+#likeBtn, #commentBtn {
+  background: #272727;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 40px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-right: 12px;
+  margin-top: 8px;
+  transition: 0.2s;
+}
+#likeBtn:hover, #commentBtn:hover {
+  background: #3f3f3f;
+}
+#comments {
+  margin: 25px 0 15px;
+}
+#comments h3 {
+  margin-bottom: 15px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 6px;
+}
+#comments > div {
+  background: #1a1a1a;
+  padding: 12px 16px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+#comments b {
+  color: #f1f1f1;
+  font-size: 0.95rem;
+}
+#comments p {
+  margin: 6px 0 0;
+  color: #ccc;
+}
+textarea#commentText {
+  width: 100%;
+  max-width: 500px;
+  padding: 12px;
+  border-radius: 20px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
+  resize: vertical;
+  font-size: 0.95rem;
+  margin: 15px 0 5px;
+}
+textarea:focus {
+  outline: 1px solid #3ea6ff;
+}
+hr {
+  border-color: #2a2a2a;
+  margin: 30px 0;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="logo" onclick="location.reload();">My Tube</div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search videos..." onkeypress="if(event.key==='Enter') searchVideo()">
+    <button onclick="searchVideo()">🔍 Search</button>
+  </div>
+
+  <button onclick="signIn()" id="loginBtn">Sign in</button>
+</div>
+
+<div class="main">
+
+  <!-- player & details (hidden until video opens) -->
+  <div id="playerSection" style="display:none">
+    <div id="player"></div>
+    <div id="details"></div>
+
+    <button onclick="likeVideo()" id="likeBtn" style="display:none">👍 Like this video</button>
+
+    <div id="comments"></div>
+
+    <textarea id="commentText" placeholder="Write a public comment..." rows="2"></textarea>
+    <button onclick="postComment()" id="commentBtn" style="display:none">💬 Post comment</button>
+
+    <hr style="border-color:#333; margin:20px 0">
+  </div>
+
+  <!-- video grid (trending / search results) -->
+  <div id="videos" class="video-grid"></div>
+
+</div>
+
+<script>
+// ================== CONFIG ==================
+// ⚠️  REPLACE WITH YOUR OWN API KEY & CLIENT ID  ⚠️
+const API_KEY = "AIzaSyBS5vLiQTaytKvA955vrl724DMet9Lp92s";           // <-- paste your YouTube Data API v3 key
+const CLIENT_ID = "1007238740169-do28943par64sptb7k6j3kg0809f2mnc.apps.googleusercontent.com";       // <-- paste your OAuth client ID
+
+// global variables
+let GoogleAuth;
+let currentVideoId = null;
+let isSignedIn = false;
+
+// ================== INIT ==================
+function initClient() {
+  gapi.load("client:auth2", async () => {
+    try {
+      await gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"],
+        scope: "https://www.googleapis.com/auth/youtube.force-ssl"
+      });
+      GoogleAuth = gapi.auth2.getAuthInstance();
+
+      // listen to sign-in state changes
+      GoogleAuth.isSignedIn.listen(updateSigninStatus);
+      // initial state
+      updateSigninStatus(GoogleAuth.isSignedIn.get());
+    } catch (err) {
+      console.warn("Auth init failed (missing keys or network)", err);
+      // still show trending even without auth
+    }
+  });
+}
+
+function updateSigninStatus(signedIn) {
+  isSignedIn = signedIn;
+  const loginBtn = document.getElementById("loginBtn");
+  const likeBtn = document.getElementById("likeBtn");
+  const commentBtn = document.getElementById("commentBtn");
+
+  if (signedIn) {
+    loginBtn.style.display = "none";      // hide sign in button
+    if (currentVideoId) {                 // if video open, show action buttons
+      likeBtn.style.display = "inline-block";
+      commentBtn.style.display = "inline-block";
+    }
+  } else {
+    loginBtn.style.display = "inline-block";
+    likeBtn.style.display = "none";
+    commentBtn.style.display = "none";
+  }
+}
+
+// manually start sign in
+function signIn() {
+  if (!GoogleAuth) {
+    alert("Google Auth not initialized. Did you set API_KEY and CLIENT_ID?");
+    return;
+  }
+  GoogleAuth.signIn().catch(err => alert("Sign in failed: " + err.error));
+}
+
+// ================== LOAD TRENDING ==================
+window.onload = function() {
+  loadTrending();
+};
+
+function loadTrending() {
+  if (!API_KEY || API_KEY === "YOUR_API_KEY") {
+    document.getElementById("videos").innerHTML = 
+      `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#aaa">
+        ⚠️ Please set a valid <b>API_KEY</b> in the script.<br>
+        (get one from Google Cloud Console)
+      </div>`;
+    return;
+  }
+
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=12&key=${API_KEY}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      renderVideoGrid(data.items, true);
+    })
+    .catch(err => {
+      document.getElementById("videos").innerHTML = `<p style="color:red">Error loading videos: ${err.message}</p>`;
+    });
+}
+
+// render grid (accepts array of video items from search or popular)
+function renderVideoGrid(items, isVideoIdDirect = false) {
+  let output = "";
+  items.forEach(item => {
+    let videoId, title, thumb;
+    if (isVideoIdDirect) {
+      // items from videos endpoint (direct id)
+      videoId = item.id;
+      title = item.snippet.title;
+      thumb = item.snippet.thumbnails.medium.url;
+    } else {
+      // items from search endpoint (id has .videoId)
+      videoId = item.id.videoId;
+      title = item.snippet.title;
+      thumb = item.snippet.thumbnails.medium.url;
+    }
+    output += `
+      <div class="video-card" onclick="openVideo('${videoId}')">
+        <img src="${thumb}" loading="lazy">
+        <p>${title}</p>
+      </div>`;
+  });
+  document.getElementById("videos").innerHTML = output;
+}
+
+// ================== SEARCH ==================
+function searchVideo() {
+  const query = document.getElementById("searchInput").value.trim();
+  if (!query) {
+    loadTrending();
+    return;
+  }
+  if (!API_KEY || API_KEY === "YOUR_API_KEY") {
+    alert("set valid API_KEY first");
+    return;
+  }
+
+  fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(query)}&maxResults=12&key=${API_KEY}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) throw new Error(data.error.message);
+      if (!data.items || data.items.length === 0) {
+        document.getElementById("videos").innerHTML = "<p style='grid-column:1/-1'>No videos found.</p>";
+        return;
+      }
+      renderVideoGrid(data.items, false);
+    })
+    .catch(err => alert("Search error: " + err.message));
+}
+
+// ================== OPEN VIDEO ==================
+function openVideo(id) {
+  currentVideoId = id;
+  document.getElementById("playerSection").style.display = "block";
+
+  // embed player
+  document.getElementById("player").innerHTML =
+    `<iframe src="https://www.youtube.com/embed/${id}?enablejsapi=1" allowfullscreen></iframe>`;
+
+  // load video details (title, views, likes)
+  fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${id}&key=${API_KEY}`)
+    .then(res => res.json())
+    .then(data => {
+      if (!data.items || data.items.length === 0) return;
+      const v = data.items[0];
+      const views = Number(v.statistics.viewCount).toLocaleString();
+      const likes = v.statistics.likeCount ? Number(v.statistics.likeCount).toLocaleString() : "0";
+      document.getElementById("details").innerHTML =
+        `<h2>${v.snippet.title}</h2>
+         <p>${v.snippet.channelTitle} · ${views} views · ${likes} likes</p>`;
+    })
+    .catch(err => console.warn("details error", err));
+
+  // load comments
+  loadComments(id);
+
+  // show like/comment buttons if signed in
+  if (isSignedIn) {
+    document.getElementById("likeBtn").style.display = "inline-block";
+    document.getElementById("commentBtn").style.display = "inline-block";
+  } else {
+    document.getElementById("likeBtn").style.display = "none";
+    document.getElementById("commentBtn").style.display = "none";
+  }
+
+  // scroll to player smoothly
+  document.getElementById("playerSection").scrollIntoView({ behavior: "smooth" });
+}
+
+// ================== COMMENTS ==================
+function loadComments(id) {
+  fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${id}&maxResults=5&key=${API_KEY}`)
+    .then(res => res.json())
+    .then(data => {
+      let html = "<h3>Comments</h3>";
+      if (data.error || !data.items) {
+        html += "<p style='color:#aaa'>No comments or comments disabled.</p>";
+      } else {
+        data.items.forEach(item => {
+          const c = item.snippet.topLevelComment.snippet;
+          html += `<div><b>${c.authorDisplayName}</b><p>${c.textDisplay}</p></div>`;
+        });
+      }
+      document.getElementById("comments").innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById("comments").innerHTML = "<p>Could not load comments.</p>";
+    });
+}
+
+// ================== LIKE (AUTH) ==================
+function likeVideo() {
+  if (!isSignedIn) {
+    alert("You need to sign in first.");
+    return;
+  }
+  if (!currentVideoId) return;
+
+  gapi.client.youtube.videos.rate({
+    id: currentVideoId,
+    rating: "like"
+  }).then(() => {
+    alert("✓ Video liked!");
+  }).catch(err => {
+    console.error(err);
+    alert("Failed to like: maybe you already liked it.");
+  });
+}
+
+// ================== POST COMMENT (AUTH) ==================
+function postComment() {
+  if (!isSignedIn) {
+    alert("Sign in to comment.");
+    return;
+  }
+  const text = document.getElementById("commentText").value.trim();
+  if (!text) {
+    alert("Write something.");
+    return;
+  }
+  if (!currentVideoId) return;
+
+  gapi.client.youtube.commentThreads.insert({
+    part: "snippet",
+    resource: {
+      snippet: {
+        videoId: currentVideoId,
+        topLevelComment: {
+          snippet: { textOriginal: text }
+        }
+      }
+    }
+  }).then(() => {
+    alert("💬 Comment posted!");
+    document.getElementById("commentText").value = "";
+    loadComments(currentVideoId);
+  }).catch(err => {
+    console.error(err);
+    alert("Comment failed: " + err.result?.error?.message);
+  });
+}
+
+// init gapi client
+initClient();
+
+// optional: make search on enter (already in input keypress)
+</script>
+
+<!-- small notice for demo: click logo to reload trending -->
+</body>
+</html>
